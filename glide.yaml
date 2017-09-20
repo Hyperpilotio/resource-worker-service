@@ -1,0 +1,10 @@
+package: github.com/Hyperpilotio/resource-worker-service
+import:
+- package: github.com/gin-gonic/gin
+  version: v1.2
+- package: github.com/prometheus/client_golang
+  version: v0.9.0-pre1
+  subpackages:
+  - prometheus/promhttp
+- package: github.com/mattn/go-isatty
+  version: ^0.0.2
