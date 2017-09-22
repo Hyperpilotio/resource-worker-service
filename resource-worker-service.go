@@ -2,10 +2,26 @@ package main
 
 import (
 	"time"
-
+	"net/http"
 	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
+	// "github.com/golang/glog"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+	duration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "request_duration_seconds",
+		Help: "Histogram of the request duration.",
+		// Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+	})
+	counter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "request_count",
+			Help: "Count of requests",
+		},
+		[]string{"resource"},
+	)
 )
 
 type ResourceWork interface {
@@ -41,24 +57,36 @@ type Work struct {
 }
 
 func main() {
+
+	prometheus.MustRegister(duration)
+	prometheus.MustRegister(counter)
+
 	r := gin.Default()
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	r.POST("/run", func(c *gin.Context) {
+
+		defer func(begun time.Time) {
+			duration.Observe(time.Since(begun).Seconds())
+			counter.With(prometheus.Labels{
+				"resource": "cpu",
+			}).Inc()
+		}(time.Now())
+
+		startTime := time.Now()
 		var work Work
-		if err := c.BindJSON(&request); err == nil {
-			startTime := time.Now()
-			for _, definition := range request.Definitions {
+		if err := c.BindJSON(&work); err == nil {
+			for _, definition := range work.Requests {
 				if err := definition.Run(); err != nil {
 					// Error
 				}
 			}
 
 			// Run the worker
-			c.JSON(http.StatusOk, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"message":  "done",
-				"duration": time.Now().Sub(startTime),
+				"duration": time.Since(startTime).Seconds(),
 				// Put the results / summaries of the work in response
 			})
 		} else {
