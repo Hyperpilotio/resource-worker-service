@@ -1,0 +1,17 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: resource-worker
+spec:
+  serviceName: service-worker-service
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: resource-worker
+    spec:
+      containers:
+      - name: resource-worker
+        image: gcr.io/hyperpilot-test/resource-worker-service
+        ports:
+        - containerPort: 7998
