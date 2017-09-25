@@ -5,6 +5,7 @@ metadata:
 spec:
   selector:
     app: resource-worker
+    podId: resource-worker-0
   ports:
   - protocol: TCP
     port: 80
