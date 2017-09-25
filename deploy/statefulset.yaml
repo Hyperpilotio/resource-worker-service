@@ -26,6 +26,7 @@ spec:
         image: wernight/kubectl
       containers:
       - name: resource-worker
+        imagePullPolicy: Always
         image: gcr.io/hyperpilot-test/resource-worker-service
         ports:
         - containerPort: 7998

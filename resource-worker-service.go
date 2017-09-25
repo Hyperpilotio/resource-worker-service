@@ -10,10 +10,9 @@ import (
 )
 
 var (
-	duration = prometheus.NewHistogram(prometheus.HistogramOpts{
+	duration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Name: "request_duration_seconds",
-		Help: "Histogram of the request duration.",
-		// Buckets: []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		Help: "Summary of request durations.",
 	})
 	counter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
