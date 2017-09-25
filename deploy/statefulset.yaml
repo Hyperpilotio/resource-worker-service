@@ -1,0 +1,32 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: resource-worker
+spec:
+  serviceName: resource-worker
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: resource-worker
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: "app"
+                  operator: In
+                  values:
+                  - resource-worker
+            topologyKey: "kubernetes.io/hostname"
+      initContainers:
+      - name: label-pods
+        command: ["sh", "-c", "/usr/local/bin/kubectl label pods ${HOSTNAME} podId=${HOSTNAME}"]
+        image: wernight/kubectl
+      containers:
+      - name: resource-worker
+        imagePullPolicy: Always
+        image: gcr.io/hyperpilot-test/resource-worker-service
+        ports:
+        - containerPort: 7998
