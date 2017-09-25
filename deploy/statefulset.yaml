@@ -3,7 +3,7 @@ kind: StatefulSet
 metadata:
   name: resource-worker
 spec:
-  serviceName: service-worker-service
+  serviceName: resource-worker
   replicas: 3
   template:
     metadata:
