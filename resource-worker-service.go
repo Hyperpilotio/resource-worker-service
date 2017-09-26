@@ -42,6 +42,9 @@ type NetworkRequest struct {
 	Bandwidth int `form:"bandwidth" json:"bandwidth"`
 }
 
+func (request *NetworkRequest) Run() error {
+}
+
 type BlkIoRequest struct {
 }
 

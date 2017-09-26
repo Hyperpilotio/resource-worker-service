@@ -1,5 +1,5 @@
-hash: 3204d72e3f4aa3178e6e2f6495dda3278dc94bff727c3cd35e9ad1522f1cbc19
-updated: 2017-09-20T18:22:25.833572377+08:00
+hash: 6fcf352b5668bf599af8d4fefc491c34a397e358f96d20e999402332c28e8938
+updated: 2017-09-26T11:33:35.89807111+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -17,7 +17,7 @@ imports:
   subpackages:
   - proto
 - name: github.com/mattn/go-isatty
-  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
+  version: 0360b2af4f38e8d38c7fce2a9f4e702702d73a39
 - name: github.com/matttproud/golang_protobuf_extensions
   version: d0c3fe89de86839aecf2e0579c40ba3bb336a453
   subpackages:
@@ -53,4 +53,9 @@ imports:
   version: c193cecd124b5cc722d7ee5538e945bdb3348435
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: k8s.io/client-go
+  version: d92e8497f71b7b4e0494e5bd204b48d34bd6f254
+  subpackages:
+  - kubernetes
+  - rest
 testImports: []

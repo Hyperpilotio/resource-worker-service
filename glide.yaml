@@ -8,3 +8,8 @@ import:
   - prometheus/promhttp
 - package: github.com/mattn/go-isatty
   version: ^0.0.2
+- package: k8s.io/client-go
+  version: ^4.0.0
+  subpackages:
+  - kubernetes
+  - rest
