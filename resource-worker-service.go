@@ -1,10 +1,16 @@
 package main
 
 import (
+	"os"
+	"fmt"
 	"time"
 	"net/http"
+	"container/ring"
 	"github.com/gin-gonic/gin"
 	// "github.com/golang/glog"
+	"k8s.io/client-go/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -43,20 +49,87 @@ type NetworkRequest struct {
 }
 
 func (request *NetworkRequest) Run() error {
+	// TODO: Send a request to networkWrkerPeers.Value
+	networkWorkerPeers = networkWorkerPeers.Next()
+	return nil
 }
 
 type BlkIoRequest struct {
 }
 
+func (request *BlkIoRequest) Run() error {
+	return nil
+}
+
 type ResourceRequest struct {
-	*CPURequest     `form:"cpu" json:"cpu,omitempty"`
-	*NetworkRequest `form:"network" json:"network,omitempty"`
-	*BlkIoRequest   `from:"blkio" json:"blkio,omitempty"`
+	CPURequest     *CPURequest     `form:"cpu" json:"cpu,omitempty"`
+	NetworkRequest *NetworkRequest `form:"network" json:"network,omitempty"`
+	BlkIoRequest   *BlkIoRequest   `from:"blkio" json:"blkio,omitempty"`
+}
+
+func (request *ResourceRequest) Run() error {
+	if request.CPURequest != nil {
+		return request.CPURequest.Run()
+	} else if request.NetworkRequest != nil {
+		return request.NetworkRequest.Run()
+	} else if request.BlkIoRequest != nil {
+		return request.BlkIoRequest.Run()
+	}
+	return nil
 }
 
 type Work struct {
 	Requests []ResourceRequest `form:"definitions" json:"definitions"`
 }
+
+func getNetworkWorkerPeerSelector() *ring.Ring {
+	currentPod := os.Getenv("HOSTNAME")
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for {
+		statefulSet, _ := clientset.AppsV1beta1().StatefulSets("default").Get(
+			"resource-worker",
+			metav1.GetOptions{},
+		)
+		if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
+			break
+		} else {
+			time.Sleep(3)
+		}
+	}
+
+	pods, err := clientset.CoreV1().Pods("default").List(
+		metav1.ListOptions{LabelSelector: "app=resource-worker"},
+	)
+
+	peers := ring.New(len(pods.Items) - 1)
+
+	for _, pod := range pods.Items {
+		podName := pod.GetName()
+		if podName != currentPod {
+			peers.Value = fmt.Sprintf(
+				"%s.%s.%s.svc.cluster.local",
+				podName,
+				pod.Spec.Subdomain,
+				pod.Namespace,
+			)
+			peers = peers.Next()
+		}
+	}
+
+	return peers
+}
+
+var networkWorkerPeers *ring.Ring = getNetworkWorkerPeerSelector()
 
 func main() {
 
