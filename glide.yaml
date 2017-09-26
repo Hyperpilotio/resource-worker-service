@@ -13,3 +13,4 @@ import:
   subpackages:
   - kubernetes
   - rest
+  - tools/clientcmd
