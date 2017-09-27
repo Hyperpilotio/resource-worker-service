@@ -4,6 +4,8 @@ import (
 	"os"
 	"fmt"
 	"time"
+	"bytes"
+	"errors"
 	"net/http"
 	"io/ioutil"
 	"container/ring"
@@ -50,8 +52,17 @@ type NetworkRequest struct {
 }
 
 func (request *NetworkRequest) Run() error {
-	// TODO: Send a request to networkWrkerPeers.Value
+	url := fmt.Sprintf("http://%s:7998/network-endpoint", networkWorkerPeers.Value)
 	networkWorkerPeers = networkWorkerPeers.Next()
+
+	content := make([]byte, request.Bandwidth)
+	resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
+
+	if err != nil {
+		return err
+	} else if resp.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("Return code %d", resp.StatusCode))
+	}
 	return nil
 }
 
