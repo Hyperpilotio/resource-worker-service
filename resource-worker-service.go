@@ -40,20 +40,90 @@ type CPURequest struct {
 	Cycles int `form:"cycles" json:"cycles"`
 }
 
-func (request *CPURequest) Run() error {
+type NetworkRequest struct {
+	Bandwidth int `form:"bandwidth" json:"bandwidth"`
+}
+
+type BlkIoRequest struct {
+}
+
+type ResourceRequest struct {
+	CPURequest     *CPURequest     `form:"cpu" json:"cpu,omitempty"`
+	NetworkRequest *NetworkRequest `form:"network" json:"network,omitempty"`
+	BlkIoRequest   *BlkIoRequest   `from:"blkio" json:"blkio,omitempty"`
+}
+
+type ResourceRequestHandler struct {
+	KubeClient   *kubernetes.Clientset
+	NetworkPeers *ring.Ring
+}
+
+func (handler *ResourceRequestHandler) GetKubeClient() error {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+	handler.KubeClient = clientset
+
+	return nil
+}
+
+func (handler *ResourceRequestHandler) GetNetworkPeers() error {
+	currentPod := os.Getenv("HOSTNAME")
+
+	for {
+		statefulSet, _ := handler.KubeClient.AppsV1beta1().StatefulSets("default").Get(
+			"resource-worker",
+			metav1.GetOptions{},
+		)
+		if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
+			break
+		} else {
+			time.Sleep(3)
+		}
+	}
+
+	pods, err := handler.KubeClient.CoreV1().Pods("default").List(
+		metav1.ListOptions{LabelSelector: "app=resource-worker"},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	handler.NetworkPeers = ring.New(len(pods.Items) - 1)
+
+	for _, pod := range pods.Items {
+		podName := pod.GetName()
+		if podName != currentPod {
+			handler.NetworkPeers.Value = fmt.Sprintf(
+				"%s.%s.%s.svc.cluster.local",
+				podName,
+				pod.Spec.Subdomain,
+				pod.Namespace,
+			)
+			handler.NetworkPeers = handler.NetworkPeers.Next()
+		}
+	}
+
+	return nil
+}
+
+func (handler *ResourceRequestHandler) RunCPURequest(request *CPURequest) error {
 	for i := 0; i < request.Cycles; i += 1 {
 	}
 
 	return nil
 }
 
-type NetworkRequest struct {
-	Bandwidth int `form:"bandwidth" json:"bandwidth"`
-}
-
-func (request *NetworkRequest) Run() error {
-	url := fmt.Sprintf("http://%s:7998/network-endpoint", networkWorkerPeers.Value)
-	networkWorkerPeers = networkWorkerPeers.Next()
+func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest) error {
+	url := fmt.Sprintf("http://%s:7998/network-endpoint", handler.NetworkPeers.Value)
+	handler.NetworkPeers = handler.NetworkPeers.Next()
 
 	content := make([]byte, request.Bandwidth)
 	resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
@@ -66,87 +136,34 @@ func (request *NetworkRequest) Run() error {
 	return nil
 }
 
-type BlkIoRequest struct {
-}
-
-func (request *BlkIoRequest) Run() error {
+func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) error {
 	return nil
 }
 
-type ResourceRequest struct {
-	CPURequest     *CPURequest     `form:"cpu" json:"cpu,omitempty"`
-	NetworkRequest *NetworkRequest `form:"network" json:"network,omitempty"`
-	BlkIoRequest   *BlkIoRequest   `from:"blkio" json:"blkio,omitempty"`
-}
-
-func (request *ResourceRequest) Run() error {
+func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
 	if request.CPURequest != nil {
-		return request.CPURequest.Run()
+		return handler.RunCPURequest(request.CPURequest)
 	} else if request.NetworkRequest != nil {
-		return request.NetworkRequest.Run()
+		return handler.RunNetworkRequest(request.NetworkRequest)
 	} else if request.BlkIoRequest != nil {
-		return request.BlkIoRequest.Run()
+		return handler.RunBlkIoRequest(request.BlkIoRequest)
 	}
 	return nil
 }
+
 
 type Work struct {
 	Requests []ResourceRequest `form:"definitions" json:"definitions"`
 }
 
-func getNetworkWorkerPeerSelector() *ring.Ring {
-	currentPod := os.Getenv("HOSTNAME")
-
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	for {
-		statefulSet, _ := clientset.AppsV1beta1().StatefulSets("default").Get(
-			"resource-worker",
-			metav1.GetOptions{},
-		)
-		if statefulSet.Status.ReadyReplicas == *statefulSet.Spec.Replicas {
-			break
-		} else {
-			time.Sleep(3)
-		}
-	}
-
-	pods, err := clientset.CoreV1().Pods("default").List(
-		metav1.ListOptions{LabelSelector: "app=resource-worker"},
-	)
-
-	peers := ring.New(len(pods.Items) - 1)
-
-	for _, pod := range pods.Items {
-		podName := pod.GetName()
-		if podName != currentPod {
-			peers.Value = fmt.Sprintf(
-				"%s.%s.%s.svc.cluster.local",
-				podName,
-				pod.Spec.Subdomain,
-				pod.Namespace,
-			)
-			peers = peers.Next()
-		}
-	}
-
-	return peers
-}
-
-var networkWorkerPeers *ring.Ring = getNetworkWorkerPeerSelector()
-
 func main() {
 
 	prometheus.MustRegister(duration)
 	prometheus.MustRegister(counter)
+
+	handler := &ResourceRequestHandler{}
+	handler.GetKubeClient()
+	handler.GetNetworkPeers()
 
 	r := gin.Default()
 
@@ -179,7 +196,7 @@ func main() {
 		var work Work
 		if err := c.BindJSON(&work); err == nil {
 			for _, definition := range work.Requests {
-				if err := definition.Run(); err != nil {
+				if err := handler.Run(&definition); err != nil {
 					// Error
 				}
 			}
