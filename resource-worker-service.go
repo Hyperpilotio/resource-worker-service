@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 	"net/http"
+	"io/ioutil"
 	"container/ring"
 	"github.com/gin-gonic/gin"
 	// "github.com/golang/glog"
@@ -139,6 +140,20 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	r.POST("/network-endpoint", func(c *gin.Context) {
+		body, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": err.Error(),
+			})
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"length": len(body),
+		})
+	})
 
 	r.POST("/run", func(c *gin.Context) {
 
