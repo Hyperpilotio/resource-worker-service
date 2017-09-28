@@ -152,7 +152,7 @@ func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
 
 
 type Work struct {
-	Requests []ResourceRequest `form:"definitions" json:"definitions"`
+	Requests []ResourceRequest `form:"requests" json:"requests"`
 }
 
 func main() {
@@ -198,8 +198,8 @@ func main() {
 		startTime := time.Now()
 		var work Work
 		if err := c.BindJSON(&work); err == nil {
-			for _, definition := range work.Requests {
-				if err := handler.Run(&definition); err != nil {
+			for _, request := range work.Requests {
+				if err := handler.Run(&request); err != nil {
 					// Error
 				}
 			}
