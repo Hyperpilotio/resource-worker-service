@@ -61,12 +61,12 @@ type ResourceRequestHandler struct {
 func (handler *ResourceRequestHandler) GetKubeClient() error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return err
+		return errors.New("Failed to load in-cluster kubeconfig: " + err.Error())
 	}
 
 	handler.KubeClient, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		return err
+		return errors.New("Failed to initialize Kubernetes client: " + err.Error())
 	}
 
 	return nil
@@ -92,7 +92,7 @@ func (handler *ResourceRequestHandler) GetNetworkPeers() error {
 	)
 
 	if err != nil {
-		return err
+		return errors.New("Failed to list available pods: " + err.Error())
 	}
 
 	handler.NetworkPeers = ring.New(len(pods.Items) - 1)
@@ -128,7 +128,7 @@ func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest
 	resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
 
 	if err != nil {
-		return err
+		return errors.New("Failed to make POST request: " + err.Error())
 	} else if resp.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("Return code %d", resp.StatusCode))
 	}
@@ -161,8 +161,12 @@ func main() {
 	prometheus.MustRegister(counter)
 
 	handler := &ResourceRequestHandler{}
-	handler.GetKubeClient()
-	handler.GetNetworkPeers()
+	if err := handler.GetKubeClient(); err != nil {
+		panic(err)
+	}
+	if err := handler.GetNetworkPeers(); err != nil {
+		panic(err)
+	}
 
 	r := gin.Default()
 
