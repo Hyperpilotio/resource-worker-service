@@ -10,7 +10,7 @@ import (
 	"io/ioutil"
 	"container/ring"
 	"github.com/gin-gonic/gin"
-	// "github.com/golang/glog"
+	"github.com/golang/glog"
 	"k8s.io/client-go/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -203,20 +203,30 @@ func main() {
 				counter.With(promLabels).Inc()
 			}(startTime)
 
-			for _, request := range work.Requests {
+			// Run the worker
+			for i, request := range work.Requests {
 				if err := handler.Run(&request); err != nil {
-					// Error
+					message := fmt.Sprintf("Request failed at index %d", i)
+					glog.Errorf("%s: %s", message, err)
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"success": false,
+						"reason": message,
+					})
+					return
 				}
 			}
 
-			// Run the worker
 			c.JSON(http.StatusOK, gin.H{
-				"message":  "done",
+				"success": true,
 				"duration": time.Since(startTime).Seconds(),
 				// Put the results / summaries of the work in response
 			})
 		} else {
 			// Handle error
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"reason": "Invalid input data",
+			})
 		}
 	})
 
