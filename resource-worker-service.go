@@ -19,16 +19,19 @@ import (
 )
 
 var (
-	duration = prometheus.NewSummary(prometheus.SummaryOpts{
-		Name: "request_duration_seconds",
-		Help: "Summary of request durations.",
-	})
+	duration = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Name: "request_duration_seconds",
+			Help: "Summary of request durations.",
+		},
+		[]string{"label"},
+	)
 	counter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "request_count",
 			Help: "Count of requests",
 		},
-		[]string{"resource"},
+		[]string{"label"},
 	)
 )
 
@@ -146,13 +149,15 @@ func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
 		return handler.RunNetworkRequest(request.NetworkRequest)
 	} else if request.BlkIoRequest != nil {
 		return handler.RunBlkIoRequest(request.BlkIoRequest)
+	} else {
+		return errors.New("Requested resource not recognized or not being implemented")
 	}
-	return nil
 }
 
 
 type Work struct {
 	Requests []ResourceRequest `form:"requests" json:"requests"`
+	Label   string `form:"label" json:"label,omitempty"`
 }
 
 func main() {
@@ -188,16 +193,16 @@ func main() {
 
 	r.POST("/run", func(c *gin.Context) {
 
-		defer func(begun time.Time) {
-			duration.Observe(time.Since(begun).Seconds())
-			counter.With(prometheus.Labels{
-				"resource": "cpu",
-			}).Inc()
-		}(time.Now())
-
-		startTime := time.Now()
 		var work Work
 		if err := c.BindJSON(&work); err == nil {
+
+			startTime := time.Now()
+			defer func(begun time.Time) {
+				promLabels := prometheus.Labels{"label": work.Label}
+				duration.With(promLabels).Observe(time.Since(begun).Seconds())
+				counter.With(promLabels).Inc()
+			}(startTime)
+
 			for _, request := range work.Requests {
 				if err := handler.Run(&request); err != nil {
 					// Error
