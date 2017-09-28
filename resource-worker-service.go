@@ -64,11 +64,10 @@ func (handler *ResourceRequestHandler) GetKubeClient() error {
 		return err
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	handler.KubeClient, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
-	handler.KubeClient = clientset
 
 	return nil
 }
