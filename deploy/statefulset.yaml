@@ -27,6 +27,6 @@ spec:
       containers:
       - name: resource-worker
         imagePullPolicy: Always
-        image: gcr.io/hyperpilot-test/resource-worker-service
+        image: hyperpilot/resource-worker-service
         ports:
         - containerPort: 7998
