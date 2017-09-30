@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	"github.com/DataDog/datadog-go/statsd"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io/ioutil"
@@ -286,10 +287,44 @@ type Work struct {
 	Label    string            `form:"label" json:"label,omitempty"`
 }
 
+
+type StatsdPublisher struct {
+	Client *statsd.Client
+}
+
+func NewStatsdPublisher() (*StatsdPublisher, error) {
+	publisher := &StatsdPublisher{}
+
+	client, err := statsd.New(fmt.Sprintf("%s:8125", os.Getenv("NODE_NAME")))
+
+	if err != nil {
+		fmt.Errorf(err.Error())
+		return nil, errors.New(fmt.Sprintf("Failed to create dogstatsd client: %s", err.Error()))
+	}
+
+	publisher.Client = client
+	publisher.Client.Namespace = "hyperpilot.resource-worker-service."
+
+	return publisher, nil
+}
+
+func (publisher *StatsdPublisher) Incr(metric string, tags []string) error {
+	return publisher.Client.Incr(metric, tags, 1)
+}
+
+func (publisher *StatsdPublisher) Timing(metric string, duration time.Duration, tags []string) error {
+	return publisher.Client.Timing(metric, duration, tags, 1)
+}
+
 func main() {
 
 	prometheus.MustRegister(duration)
 	prometheus.MustRegister(counter)
+
+	statsdPub, err := NewStatsdPublisher()
+	if err != nil {
+		panic(err)
+	}
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
@@ -324,8 +359,14 @@ func main() {
 			startTime := time.Now()
 			defer func(begun time.Time) {
 				promLabels := prometheus.Labels{"label": work.Label}
-				duration.With(promLabels).Observe(time.Since(begun).Seconds())
+				timePassed := time.Since(begun)
+
+				duration.With(promLabels).Observe(timePassed.Seconds())
 				counter.With(promLabels).Inc()
+
+				statsdLabels := []string{fmt.Sprintf("label:%s", work.Label)}
+				statsdPub.Timing("request_duration", timePassed, statsdLabels)
+				statsdPub.Incr("request_count", statsdLabels)
 			}(startTime)
 
 			// Run the worker
