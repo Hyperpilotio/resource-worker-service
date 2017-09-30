@@ -150,22 +150,47 @@ func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest
 }
 
 func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) error {
-	if request.ReadSize != 0 {
-		readerArray := make([]byte, request.ReadSize)
-		bytesRead := 0
-		file, err := os.Open("50MBfile")
-		if err != nil {
-			return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
+	for i := 0; i < request.Rounds; i++ {
+		if request.ReadSize != 0 {
+			readerArray := make([]byte, request.ReadSize)
+			bytesRead := 0
+			file, err := os.Open("50MBfile")
+			if err != nil {
+				return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
+			}
+
+			for bytesRead < request.ReadSize {
+				n, err := file.ReadAt(readerArray[bytesRead:], 0)
+				bytesRead += n
+				if err != nil && err != io.EOF {
+					return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
+				}
+			}
+
+			if err := file.Close(); err != nil {
+				return errors.New(fmt.Sprintf("Failed to close file: %s", err.Error()))
+			}
 		}
 
-		for bytesRead < request.ReadSize {
-			n, err := file.ReadAt(readerArray[bytesRead:], 0)
-			bytesRead += n
-			if err != nil && err != io.EOF {
-				return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
+		if request.WriteSize != 0 {
+			tmpfile, err := ioutil.TempFile("", "rws")
+			if err != nil {
+				return errors.New(fmt.Sprintf("Failed to create temp file: %s", err.Error()))
+			}
+			defer os.Remove(tmpfile.Name())
+
+			content := make([]byte, request.WriteSize)
+			if _, err := tmpfile.Write(content); err != nil {
+				return errors.New(fmt.Sprintf("Failed to write into file: %s", err.Error()))
+			}
+
+			if err := tmpfile.Close(); err != nil {
+				return errors.New(fmt.Sprintf("Failed to close file: %s", err.Error()))
 			}
 		}
 	}
+
+	return nil
 }
 
 func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error {
