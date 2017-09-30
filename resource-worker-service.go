@@ -193,13 +193,11 @@ func main() {
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
-		glog.Error("Cannot get Kube client!")
-		//	panic(err)
+		panic(err)
 	}
-	//if err := handler.GetNetworkPeers(); err != nil {
-	//glog.Error("Cannot get network peers")
-	//	panic(err)
-	//}
+	if err := handler.GetNetworkPeers(); err != nil {
+		panic(err)
+	}
 
 	r := gin.Default()
 
