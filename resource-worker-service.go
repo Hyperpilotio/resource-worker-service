@@ -1,21 +1,22 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"time"
 	"bytes"
-	"errors"
-	"net/http"
-	"io/ioutil"
 	"container/ring"
+	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
-	"k8s.io/client-go/kubernetes"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
 
 var (
@@ -43,15 +44,22 @@ type CPURequest struct {
 	Cycles int `form:"cycles" json:"cycles"`
 }
 
+type MemRequest struct {
+	Size   int `form:"size" json:"size"`    // in MB
+	Rounds int `form:"rounds" json:"round"` // number of iterations
+}
+
 type NetworkRequest struct {
 	Bandwidth int `form:"bandwidth" json:"bandwidth"`
 }
 
 type BlkIoRequest struct {
+	ioSize int `form:"ioSize" json:"ioSize"`
 }
 
 type ResourceRequest struct {
 	CPURequest     *CPURequest     `form:"cpu" json:"cpu,omitempty"`
+	MemRequest     *MemRequest     `form:"mem" json:"mem,omitempty"`
 	NetworkRequest *NetworkRequest `form:"network" json:"network,omitempty"`
 	BlkIoRequest   *BlkIoRequest   `from:"blkio" json:"blkio,omitempty"`
 }
@@ -117,7 +125,7 @@ func (handler *ResourceRequestHandler) GetNetworkPeers() error {
 }
 
 func (handler *ResourceRequestHandler) RunCPURequest(request *CPURequest) error {
-	for i := 0; i < request.Cycles; i += 1 {
+	for i := 0; i < request.Cycles; i++ {
 	}
 
 	return nil
@@ -142,9 +150,28 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 	return nil
 }
 
+func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error {
+	arraySize := request.Size * 1024 * 1024 / 8
+	dataArray := make([]int64, uint64(arraySize))
+	if len(dataArray) != arraySize {
+		return errors.New("Unable to allocate an array of " + strconv.Itoa(arraySize*8) + " Bytes")
+	}
+	fmt.Println("Successfully allocated an array of " + strconv.Itoa(arraySize*8) + " Bytes")
+
+	for r := 0; r < request.Rounds; r++ {
+		for i := 0; i < len(dataArray); i++ {
+			dataArray[i] += 1.0 / int64(request.Size)
+		}
+	}
+
+	return nil
+}
+
 func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
 	if request.CPURequest != nil {
 		return handler.RunCPURequest(request.CPURequest)
+	} else if request.MemRequest != nil {
+		return handler.RunMemRequest(request.MemRequest)
 	} else if request.NetworkRequest != nil {
 		return handler.RunNetworkRequest(request.NetworkRequest)
 	} else if request.BlkIoRequest != nil {
@@ -154,10 +181,9 @@ func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
 	}
 }
 
-
 type Work struct {
 	Requests []ResourceRequest `form:"requests" json:"requests"`
-	Label   string `form:"label" json:"label,omitempty"`
+	Label    string            `form:"label" json:"label,omitempty"`
 }
 
 func main() {
@@ -167,11 +193,13 @@ func main() {
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
-		panic(err)
+		glog.Error("Cannot get Kube client!")
+		//	panic(err)
 	}
-	if err := handler.GetNetworkPeers(); err != nil {
-		panic(err)
-	}
+	//if err := handler.GetNetworkPeers(); err != nil {
+	//glog.Error("Cannot get network peers")
+	//	panic(err)
+	//}
 
 	r := gin.Default()
 
@@ -182,12 +210,12 @@ func main() {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
-				"error": err.Error(),
+				"error":   err.Error(),
 			})
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"length": len(body),
+			"length":  len(body),
 		})
 	})
 
@@ -206,18 +234,18 @@ func main() {
 			// Run the worker
 			for i, request := range work.Requests {
 				if err := handler.Run(&request); err != nil {
-					message := fmt.Sprintf("Request failed at index %d", i)
+					message := fmt.Sprintf("Request no. %d failed", i)
 					glog.Errorf("%s: %s", message, err)
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"success": false,
-						"reason": message,
+						"reason":  message,
 					})
 					return
 				}
 			}
 
 			c.JSON(http.StatusOK, gin.H{
-				"success": true,
+				"success":  true,
 				"duration": time.Since(startTime).Seconds(),
 				// Put the results / summaries of the work in response
 			})
@@ -225,7 +253,7 @@ func main() {
 			// Handle error
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
-				"reason": "Invalid input data",
+				"reason":  "Invalid input data",
 			})
 		}
 	})

@@ -3,7 +3,7 @@ GO_EXECUTABLE ?= go
 
 ORGANIZATION=hyperpilot
 IMAGE=resource-worker-service
-TAG=latest
+TAG=test
 
 glide-check:
 	@if [ -z $GLIDE ]; then \
@@ -18,6 +18,9 @@ init: glide-check
 
 build: init
 	$(GO_EXECUTABLE) build .
+
+run:
+	./resource-worker-service -logtostderr=true -v=1
 
 build-linux: init
 	GOOS=linux GOARCH=amd64 $(GO_EXECUTABLE) build .
