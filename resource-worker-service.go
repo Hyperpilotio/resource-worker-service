@@ -45,8 +45,8 @@ type CPURequest struct {
 }
 
 type MemRequest struct {
-	Size   int `form:"size" json:"size"`    // in MB
-	Rounds int `form:"rounds" json:"round"` // number of iterations
+	Size   int `form:"size" json:"size"`     // in MB
+	Rounds int `form:"rounds" json:"rounds"` // number of iterations
 }
 
 type NetworkRequest struct {
