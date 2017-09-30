@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"bytes"
 	"container/ring"
 	"errors"
@@ -54,7 +55,9 @@ type NetworkRequest struct {
 }
 
 type BlkIoRequest struct {
-	ioSize int `form:"ioSize" json:"ioSize"`
+	ReadSize  int `form:"readSize" json:"readSize,omitempty"`
+	WriteSize int `form:"writeSize" json:"writeSize,omitempty"`
+	Rounds    int `form:"rounds" json:"rounds"`
 }
 
 type ResourceRequest struct {
@@ -147,7 +150,22 @@ func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest
 }
 
 func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) error {
-	return nil
+	if request.ReadSize != 0 {
+		readerArray := make([]byte, request.ReadSize)
+		bytesRead := 0
+		file, err := os.Open("50MBfile")
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
+		}
+
+		for bytesRead < request.ReadSize {
+			n, err := file.ReadAt(readerArray[bytesRead:], 0)
+			bytesRead += n
+			if err != nil && err != io.EOF {
+				return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
+			}
+		}
+	}
 }
 
 func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error {
