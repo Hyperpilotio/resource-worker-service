@@ -1,42 +1,26 @@
 package main
 
 import (
-	"bytes"
-	"container/ring"
-	"errors"
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
-	"github.com/DataDog/datadog-go/statsd"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"math/rand"
-	"net/http"
 	"os"
-	"strconv"
+	"fmt"
 	"time"
+	"flag"
+	"bytes"
+	"errors"
+	"strconv"
+	"net/http"
+	"io/ioutil"
+	"math/rand"
+	"container/ring"
+	"k8s.io/client-go/rest"
+	"github.com/golang/glog"
+	"github.com/gin-gonic/gin"
+	"k8s.io/client-go/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/hyperpilotio/resource-worker-service/publisher"
 )
 
-var (
-	duration = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Name: "request_duration_seconds",
-			Help: "Summary of request durations.",
-		},
-		[]string{"label"},
-	)
-	counter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "request_count",
-			Help: "Count of requests",
-		},
-		[]string{"label"},
-	)
-)
 
 type ResourceWork interface {
 	Run() error
@@ -288,43 +272,18 @@ type Work struct {
 }
 
 
-type StatsdPublisher struct {
-	Client *statsd.Client
-}
-
-func NewStatsdPublisher() (*StatsdPublisher, error) {
-	publisher := &StatsdPublisher{}
-
-	client, err := statsd.New(fmt.Sprintf("%s:8125", os.Getenv("NODE_NAME")))
-
-	if err != nil {
-		fmt.Errorf(err.Error())
-		return nil, errors.New(fmt.Sprintf("Failed to create dogstatsd client: %s", err.Error()))
-	}
-
-	publisher.Client = client
-	publisher.Client.Namespace = "hyperpilot.resource-worker-service."
-
-	return publisher, nil
-}
-
-func (publisher *StatsdPublisher) Incr(metric string, tags []string) error {
-	return publisher.Client.Incr(metric, tags, 1)
-}
-
-func (publisher *StatsdPublisher) Timing(metric string, duration time.Duration, tags []string) error {
-	return publisher.Client.Timing(metric, duration, tags, 1)
-}
-
 func main() {
 
-	prometheus.MustRegister(duration)
-	prometheus.MustRegister(counter)
+	statsPublishType := flag.String("stats", "prometheus", "name of the stats collector service")
+	flag.Parse()
 
-	statsdPub, err := NewStatsdPublisher()
+	statsPublisher, err := publisher.NewStatsPublisher(*statsPublishType)
 	if err != nil {
 		panic(err)
 	}
+
+	statsPublisher.RegisterCounter("request_count", "Count of requests")
+	statsPublisher.RegisterTimer("request_duration", "Summary of request durations")
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
@@ -358,15 +317,8 @@ func main() {
 
 			startTime := time.Now()
 			defer func(begun time.Time) {
-				promLabels := prometheus.Labels{"label": work.Label}
-				timePassed := time.Since(begun)
-
-				duration.With(promLabels).Observe(timePassed.Seconds())
-				counter.With(promLabels).Inc()
-
-				statsdLabels := []string{fmt.Sprintf("label:%s", work.Label)}
-				statsdPub.Timing("request_duration", timePassed, statsdLabels)
-				statsdPub.Incr("request_count", statsdLabels)
+				statsPublisher.Timing("request_duration", work.Label, time.Since(begun))
+				statsPublisher.Inc("request_count", work.Label)
 			}(startTime)
 
 			// Run the worker
