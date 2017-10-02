@@ -57,7 +57,7 @@ type NetworkRequest struct {
 type BlkIoRequest struct {
 	ReadSize  int `form:"readSize" json:"readSize,omitempty"`
 	WriteSize int `form:"writeSize" json:"writeSize,omitempty"`
-	Rounds    int `form:"rounds" json:"rounds"`
+	Rounds    *int `form:"rounds" json:"rounds"`
 }
 
 type ResourceRequest struct {
@@ -150,7 +150,11 @@ func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest
 }
 
 func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) error {
-	for i := 0; i < request.Rounds; i++ {
+	if request.Rounds == nil {
+		defaultRounds := 1
+		request.Rounds = &defaultRounds
+	}
+	for i := 0; i < *request.Rounds; i++ {
 		if request.ReadSize != 0 {
 			readerArray := make([]byte, request.ReadSize)
 			bytesRead := 0
