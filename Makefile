@@ -19,6 +19,9 @@ init: glide-check
 build: init
 	$(GO_EXECUTABLE) build .
 
+run:
+	./resource-worker-service -logtostderr=true -v=2
+
 build-linux: init
 	GOOS=linux GOARCH=amd64 $(GO_EXECUTABLE) build .
 
