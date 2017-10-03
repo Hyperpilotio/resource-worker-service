@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/Hyperpilotio/resource-worker-service/publisher"
 )
 
 
@@ -224,7 +223,7 @@ func main() {
 	statsPublishType := flag.String("stats", "prometheus", "name of the stats collector service")
 	flag.Parse()
 
-	statsPublisher, err := publisher.NewStatsPublisher(*statsPublishType)
+	statsPublisher, err := NewStatsPublisher(*statsPublishType)
 	if err != nil {
 		panic(err)
 	}
