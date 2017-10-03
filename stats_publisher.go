@@ -1,12 +1,12 @@
-package publisher
+package main
 
 import (
 	"os"
 	"fmt"
 	"time"
 	"errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/DataDog/datadog-go/statsd"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type prometheusPublisher struct {
@@ -29,7 +29,7 @@ func NewStatsPublisher(to string) (*StatsPublisher, error) {
 	switch to {
 	case "prometheus":
 		publisher.prometheus = &prometheusPublisher{
-			counters: make(map[string]*prometheus.CounterVec),
+			counters:  make(map[string]*prometheus.CounterVec),
 			summaries: make(map[string]*prometheus.SummaryVec),
 		}
 	case "statsd":
