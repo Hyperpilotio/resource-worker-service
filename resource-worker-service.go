@@ -242,7 +242,9 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	if statsPublisher.To == "prometheus" {
+		r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
 
 	r.POST("/network-endpoint", func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
