@@ -36,6 +36,13 @@ spec:
         env:
         - name: HOST_PROC
           value: /host_proc
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        # Uncomment this section to publish data to statsd instead of prometheus
+        # - name: STATS_PUBLISHER
+        #   value: statsd
       volumes:
       - name: procfs
         hostPath:
