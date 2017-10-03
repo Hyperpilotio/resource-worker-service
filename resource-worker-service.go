@@ -220,7 +220,11 @@ type Work struct {
 
 func main() {
 
-	statsPublishType := flag.String("stats", "prometheus", "name of the stats collector service")
+	envStatsPublisher := os.Getenv("STATS_PUBLISHER")
+	if envStatsPublisher == "" {
+		envStatsPublisher = "prometheus"
+	}
+	statsPublishType := flag.String("stats", envStatsPublisher, "name of the stats collector service")
 	flag.Parse()
 
 	statsPublisher, err := NewStatsPublisher(*statsPublishType)

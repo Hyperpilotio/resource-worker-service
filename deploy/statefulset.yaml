@@ -35,3 +35,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        # Uncommend this section to publish data to statsd instead of prometheus
+        # - name: STATS_PUBLISHER
+        #   value: statsd
