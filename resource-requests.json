@@ -1,0 +1,64 @@
+{
+    "requests": [
+        {"cpu": {
+	    "cycles": 200,
+            "rounds": 10
+	    }
+        },
+	{"mem": {
+            "size": 20
+	    }
+	},
+	{"blkio": {
+	    "readSize": 1048576,
+	    "rounds": 10
+	    }
+	},
+        {"cpu": {
+	    "cycles": 400,
+	    "noise": 5
+	    }
+        },
+	{"mem": {
+            "size": 40,
+            "rounds": 10
+	    }
+	},
+	{"blkio": {
+	    "writeSize": 1048576,
+	    "rounds": 10
+	    }
+	},
+        {"cpu": {
+	    "cycles": 600
+	    }
+        },
+	{"mem": {
+            "size": 60,
+            "rounds": 10
+	    }
+	},
+        {"cpu": {
+	    "cycles": 800,
+	    "noise": 5,
+	    "rounds": 10
+	    }
+        },
+	{"mem": {
+            "size": 80,
+            "rounds": 10
+	    }
+	},
+        {"cpu": {
+	    "cycles": 1000,
+	    "noise": 5,
+	    "rounds": 10
+	    }
+        },
+	{"mem": {
+            "size": 100,
+            "rounds": 10
+	    }
+	}
+    ]
+}

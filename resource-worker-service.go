@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"bytes"
 	"container/ring"
 	"errors"
@@ -10,10 +9,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -42,22 +43,25 @@ type ResourceWork interface {
 }
 
 type CPURequest struct {
-	Cycles int `form:"cycles" json:"cycles"`
+	Cycles int  `form:"cycles" json:"cycles"`
+	Noise  *int `form:"noise" json:"noise,omitempty"` // in percentage
+	Rounds *int `form:"rounds" json:"rounds,omitempty"`
 }
 
 type MemRequest struct {
-	Size   int `form:"size" json:"size"`     // in MB
-	Rounds int `form:"rounds" json:"rounds"` // number of iterations
+	Size   int  `form:"size" json:"size"` // in MB
+	Rounds *int `form:"rounds" json:"rounds,omitempty"`
 }
 
 type NetworkRequest struct {
-	Bandwidth int `form:"bandwidth" json:"bandwidth"`
+	Bandwidth int  `form:"bandwidth" json:"bandwidth"` // in mbps
+	Rounds    *int `form:"rounds" json:"rounds,omitempty"`
 }
 
 type BlkIoRequest struct {
-	ReadSize  int `form:"readSize" json:"readSize,omitempty"`
-	WriteSize int `form:"writeSize" json:"writeSize,omitempty"`
-	Rounds    *int `form:"rounds" json:"rounds"`
+	ReadSize  int  `form:"readSize" json:"readSize,omitempty"`   // in bytes
+	WriteSize int  `form:"writeSize" json:"writeSize,omitempty"` // in bytes
+	Rounds    *int `form:"rounds" json:"rounds,omitempty"`
 }
 
 type ResourceRequest struct {
@@ -128,23 +132,64 @@ func (handler *ResourceRequestHandler) GetNetworkPeers() error {
 }
 
 func (handler *ResourceRequestHandler) RunCPURequest(request *CPURequest) error {
-	for i := 0; i < request.Cycles; i++ {
+	if request.Rounds == nil {
+		defaultRounds := 1
+		request.Rounds = &defaultRounds
+	}
+	if request.Noise == nil {
+		defaultNoise := 0
+		request.Noise = &defaultNoise
+	}
+
+	ratio := 1.0 + (rand.Float32()-0.5)*2.0*float32(*request.Noise/100)
+	fmt.Printf("Ratio for modulation is %f", ratio)
+	for r := 0; r < *request.Rounds; r++ {
+		for i := 0; i < int(float32(request.Cycles)*ratio); i++ {
+		}
+	}
+
+	return nil
+}
+
+func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error {
+	if request.Rounds == nil {
+		defaultRounds := 1
+		request.Rounds = &defaultRounds
+	}
+	arraySize := request.Size * 1024 * 1024 / 8
+	dataArray := make([]int64, uint64(arraySize))
+	if len(dataArray) != arraySize {
+		return errors.New("Unable to allocate an array of " + strconv.Itoa(arraySize*8) + " Bytes")
+	}
+	fmt.Println("Successfully allocated an array of " + strconv.Itoa(arraySize*8) + " Bytes")
+
+	for r := 0; r < *request.Rounds; r++ {
+		for i := 0; i < len(dataArray); i++ {
+			dataArray[i] += 1.0 / int64(request.Size)
+		}
 	}
 
 	return nil
 }
 
 func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest) error {
+	if request.Rounds == nil {
+		defaultRounds := 1
+		request.Rounds = &defaultRounds
+	}
+
 	url := fmt.Sprintf("http://%s:7998/network-endpoint", handler.NetworkPeers.Value)
 	handler.NetworkPeers = handler.NetworkPeers.Next()
 
 	content := make([]byte, request.Bandwidth)
-	resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
+	for r := 0; r < *request.Rounds; r++ {
+		resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
 
-	if err != nil {
-		return errors.New("Failed to make POST request: " + err.Error())
-	} else if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Return code %d", resp.StatusCode))
+		if err != nil {
+			return errors.New("Failed to make POST request: " + err.Error())
+		} else if resp.StatusCode != http.StatusOK {
+			return errors.New(fmt.Sprintf("Return code %d", resp.StatusCode))
+		}
 	}
 	return nil
 }
@@ -158,7 +203,7 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 		if request.ReadSize != 0 {
 			readerArray := make([]byte, request.ReadSize)
 			bytesRead := 0
-			file, err := os.Open("50MBfile")
+			file, err := os.Open("testfile")
 			if err != nil {
 				return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
 			}
@@ -191,23 +236,6 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 			if err := tmpfile.Close(); err != nil {
 				return errors.New(fmt.Sprintf("Failed to close file: %s", err.Error()))
 			}
-		}
-	}
-
-	return nil
-}
-
-func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error {
-	arraySize := request.Size * 1024 * 1024 / 8
-	dataArray := make([]int64, uint64(arraySize))
-	if len(dataArray) != arraySize {
-		return errors.New("Unable to allocate an array of " + strconv.Itoa(arraySize*8) + " Bytes")
-	}
-	fmt.Println("Successfully allocated an array of " + strconv.Itoa(arraySize*8) + " Bytes")
-
-	for r := 0; r < request.Rounds; r++ {
-		for i := 0; i < len(dataArray); i++ {
-			dataArray[i] += 1.0 / int64(request.Size)
 		}
 	}
 
@@ -279,8 +307,8 @@ func main() {
 			// Run the worker
 			for i, request := range work.Requests {
 				if err := handler.Run(&request); err != nil {
-					message := fmt.Sprintf("Request no. %d failed", i)
-					glog.Errorf("%s: %s", message, err)
+					message := fmt.Sprintf("Request no. %d failed: %s", i, err)
+					glog.Errorf("%s", message)
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"success": false,
 						"reason":  message,

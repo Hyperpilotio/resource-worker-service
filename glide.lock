@@ -1,11 +1,6 @@
-hash: 71d48cd1525dbd03edd25340d0325c94b1f66a9a1986b96023e849bdbc10b1eb
-updated: 2017-09-26T12:03:51.207959282+08:00
+hash: 09c55b4a5cddc9f8e6f1a9cf44f63c4ee0aea7468722f7eb6d8b233152a5ec32
+updated: 2017-10-05T18:56:07.870339101Z
 imports:
-- name: cloud.google.com/go
-  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
-  subpackages:
-  - compute/metadata
-  - internal
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
@@ -20,7 +15,7 @@ imports:
   - digest
   - reference
 - name: github.com/emicklei/go-restful
-  version: 09691a3b6378b740595c1002f40c34dd5f218a22
+  version: ff4f55a206334ef123e4f79bbf348980da81ca46
   subpackages:
   - log
 - name: github.com/emicklei/go-restful-swagger12
@@ -47,7 +42,7 @@ imports:
 - name: github.com/go-openapi/swag
   version: 1d0bd113de87027671077d3c71eb3ac5d7dbba72
 - name: github.com/gogo/protobuf
-  version: e18d7aa8f8c624c915db340349aad4c49b10d173
+  version: c0656edd0d9eab7c66d1eb0c568f9039345796f7
   subpackages:
   - proto
   - sortkeys
@@ -59,10 +54,6 @@ imports:
   - proto
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
-- name: github.com/howeyc/gopass
-  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
-- name: github.com/imdario/mergo
-  version: 6633656539c1639d9d78127b7d47c622b5d7b6dc
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/mailru/easyjson
@@ -106,26 +97,13 @@ imports:
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
-- name: golang.org/x/crypto
-  version: d172538b2cfce0c13cee31e647d0367aa8cd2486
-  subpackages:
-  - ssh/terminal
 - name: golang.org/x/net
-  version: e90d6d0afc4c315a0d87a568ae68577cc15149a0
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
-  - context
-  - context/ctxhttp
   - http2
   - http2/hpack
   - idna
   - lex/httplex
-- name: golang.org/x/oauth2
-  version: a6bd8cefa1811bd24b86f8902872e4e8225f74c4
-  subpackages:
-  - google
-  - internal
-  - jws
-  - jwt
 - name: golang.org/x/sys
   version: 8f0908ab3b2457e2e15403d3697c9ef5cb4b57a9
   subpackages:
@@ -143,18 +121,6 @@ imports:
   - unicode/bidi
   - unicode/norm
   - width
-- name: google.golang.org/appengine
-  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
-  subpackages:
-  - internal
-  - internal/app_identity
-  - internal/base
-  - internal/datastore
-  - internal/log
-  - internal/modules
-  - internal/remote_api
-  - internal/urlfetch
-  - urlfetch
 - name: gopkg.in/go-playground/validator.v8
   version: c193cecd124b5cc722d7ee5538e945bdb3348435
 - name: gopkg.in/inf.v0
@@ -271,20 +237,13 @@ imports:
   - pkg/util
   - pkg/util/parsers
   - pkg/version
-  - plugin/pkg/client/auth/gcp
   - rest
   - rest/watch
-  - third_party/forked/golang/template
-  - tools/auth
   - tools/clientcmd
   - tools/clientcmd/api
-  - tools/clientcmd/api/latest
-  - tools/clientcmd/api/v1
   - tools/metrics
   - transport
   - util/cert
   - util/flowcontrol
-  - util/homedir
   - util/integer
-  - util/jsonpath
 testImports: []

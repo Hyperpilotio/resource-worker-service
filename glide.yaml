@@ -1,4 +1,4 @@
-package: github.com/Hyperpilotio/resource-worker-service
+package: github.com/hyperpilotio/resource-worker-service
 import:
 - package: github.com/gin-gonic/gin
   version: v1.2
