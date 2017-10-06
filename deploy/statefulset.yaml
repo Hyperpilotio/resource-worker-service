@@ -30,3 +30,13 @@ spec:
         image: hyperpilot/resource-worker-service
         ports:
         - containerPort: 7998
+        volumeMounts:
+        - mountPath: /host_proc
+          name: procfs
+        env:
+        - name: HOST_PROC
+          value: /host_proc
+      volumes:
+      - name: procfs
+        hostPath:
+          path: /proc
