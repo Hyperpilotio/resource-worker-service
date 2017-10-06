@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 	"errors"
-	"github.com/DataDog/datadog-go/statsd"
+	"github.com/quipo/statsd"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,7 +18,7 @@ type StatsPublisher struct {
 	To         string
 	NodeName   string
 	prometheus *prometheusPublisher
-	statsd     *statsd.Client
+	statsd     *statsd.StatsdClient
 }
 
 func NewStatsPublisher(to string) (*StatsPublisher, error) {
@@ -33,16 +33,12 @@ func NewStatsPublisher(to string) (*StatsPublisher, error) {
 			summaries: make(map[string]*prometheus.SummaryVec),
 		}
 	case "statsd":
-		statsdClient, err := statsd.New(nodeName + ":8125")
-		if err != nil {
+		prefix := "hyperpilot.resource-worker-service."
+		statsdClient := statsd.NewStatsdClient(nodeName + ":8125", prefix)
+		if err := statsdClient.CreateSocket(); err != nil {
 			return nil, errors.New("Failed to create statsd client: " + err.Error())
 		}
 		publisher.statsd = statsdClient
-		publisher.statsd.Namespace = "hyperpilot.resource-worker-service."
-		publisher.statsd.Tags = append(
-			publisher.statsd.Tags,
-			fmt.Sprintf("node:%s", nodeName),
-		)
 	default:
 		return nil, errors.New("Unrecognized stats publisher service: " + to)
 	}
@@ -70,6 +66,10 @@ func (publisher *StatsPublisher) RegisterTimer(metric string, help string) {
 	}
 }
 
+func (publisher *StatsPublisher) makeStatsdMetric(metric string, label string) string {
+	return fmt.Sprintf("%s..node--%s..label--%s", metric, publisher.NodeName, label)
+}
+
 func (publisher *StatsPublisher) Inc(metric string, label string) error {
 	switch publisher.To {
 	case "prometheus":
@@ -77,7 +77,7 @@ func (publisher *StatsPublisher) Inc(metric string, label string) error {
 			prometheus.Labels{"label": label, "node": publisher.NodeName},
 		).Inc()
 	case "statsd":
-		return publisher.statsd.Incr(metric, []string{fmt.Sprintf("label:%s", label)}, 1)
+		return publisher.statsd.Incr(publisher.makeStatsdMetric(metric, label), 1)
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func (publisher *StatsPublisher) Timing(metric string, label string, duration ti
 			prometheus.Labels{"label": label, "node": publisher.NodeName},
 		).Observe(duration.Seconds() * 1000)
 	case "statsd":
-		return publisher.statsd.Timing(metric, duration, []string{fmt.Sprintf("label:%s", label)}, 1)
+		return publisher.statsd.Timing(publisher.makeStatsdMetric(metric, label), int64(duration.Seconds() * 1000))
 	}
 	return nil
 }
