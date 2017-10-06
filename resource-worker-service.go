@@ -9,7 +9,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"io"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -199,29 +198,32 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 		defaultRounds := 1
 		request.Rounds = &defaultRounds
 	}
-	for i := 0; i < *request.Rounds; i++ {
-		if request.ReadSize != 0 {
-			readerArray := make([]byte, request.ReadSize)
-			bytesRead := 0
-			file, err := os.Open("testfile")
-			if err != nil {
-				return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
-			}
 
-			for bytesRead < request.ReadSize {
-				n, err := file.ReadAt(readerArray[bytesRead:], 0)
-				bytesRead += n
-				if err != nil && err != io.EOF {
-					return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
-				}
-			}
+	if request.ReadSize != 0 {
+		readerArray := make([]byte, request.ReadSize)
+		file, err := os.Open("testfile")
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
+		}
+		fileStat, err := file.Stat()
+		if err != nil {
+			return errors.New(fmt.Sprintf("Failed to get file stat: %s", err.Error()))
+		}
 
-			if err := file.Close(); err != nil {
-				return errors.New(fmt.Sprintf("Failed to close file: %s", err.Error()))
+		for i := 0; i < *request.Rounds; i ++ {
+			readAt := rand.Int63n(fileStat.Size() - int64(request.ReadSize))
+			if _, err := file.ReadAt(readerArray, readAt); err != nil {
+				return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
 			}
 		}
 
-		if request.WriteSize != 0 {
+		if err := file.Close(); err != nil {
+			return errors.New(fmt.Sprintf("Failed to close file: %s", err.Error()))
+		}
+	}
+
+	if request.WriteSize != 0 {
+		for i := 0; i < *request.Rounds; i++ {
 			tmpfile, err := ioutil.TempFile("", "rws")
 			if err != nil {
 				return errors.New(fmt.Sprintf("Failed to create temp file: %s", err.Error()))
