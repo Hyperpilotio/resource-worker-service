@@ -1,0 +1,36 @@
+{
+    "requests": [
+        {
+	    "cpu": {
+		"cycles": 500,
+		"noise": 5,
+		"rounds": 10
+	    },
+	    "mem": {
+		"size": 100,
+		"rounds": 10
+	    },
+	    "blkio": {
+		"writeSize": 1048576,
+		"rounds": 10
+	    }
+	},
+	{
+	    "blkio": {
+		"readSize": 1048576,
+		"rounds": 5
+	    }
+	},
+	{
+	    "mem": {
+		"size": 500,
+		"rounds": 5
+	    },
+	    "cpu": {
+		"cycles": 1000,
+		"noise": 10,
+		"rounds": 5
+	    }
+	}
+    ]
+}

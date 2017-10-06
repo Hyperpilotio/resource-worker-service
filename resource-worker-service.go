@@ -141,8 +141,7 @@ func (handler *ResourceRequestHandler) RunCPURequest(request *CPURequest) error 
 		request.Noise = &defaultNoise
 	}
 
-	ratio := 1.0 + (rand.Float32()-0.5)*2.0*float32(*request.Noise/100)
-	fmt.Printf("Ratio for modulation is %f", ratio)
+	ratio := 1.0 + (rand.Float32()-0.5)*2.0*float32(*request.Noise)/100.0
 	for r := 0; r < *request.Rounds; r++ {
 		for i := 0; i < int(float32(request.Cycles)*ratio); i++ {
 		}
@@ -156,12 +155,13 @@ func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error 
 		defaultRounds := 1
 		request.Rounds = &defaultRounds
 	}
+
 	arraySize := request.Size * 1024 * 1024 / 8
 	dataArray := make([]int64, uint64(arraySize))
 	if len(dataArray) != arraySize {
 		return errors.New("Unable to allocate an array of " + strconv.Itoa(arraySize*8) + " Bytes")
 	}
-	fmt.Println("Successfully allocated an array of " + strconv.Itoa(arraySize*8) + " Bytes")
+	fmt.Println("[Info] Successfully allocated an array of " + strconv.Itoa(arraySize*8) + " Bytes")
 
 	for r := 0; r < *request.Rounds; r++ {
 		for i := 0; i < len(dataArray); i++ {
@@ -243,17 +243,40 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 }
 
 func (handler *ResourceRequestHandler) Run(request *ResourceRequest) error {
+	numRuns := 0
 	if request.CPURequest != nil {
-		return handler.RunCPURequest(request.CPURequest)
-	} else if request.MemRequest != nil {
-		return handler.RunMemRequest(request.MemRequest)
-	} else if request.NetworkRequest != nil {
-		return handler.RunNetworkRequest(request.NetworkRequest)
-	} else if request.BlkIoRequest != nil {
-		return handler.RunBlkIoRequest(request.BlkIoRequest)
-	} else {
-		return errors.New("Requested resource not recognized or not being implemented")
+		if err := handler.RunCPURequest(request.CPURequest); err != nil {
+			return errors.New(fmt.Sprintf("CPU request failure: %s", err.Error()))
+		}
+		numRuns++
 	}
+
+	if request.MemRequest != nil {
+		if err := handler.RunMemRequest(request.MemRequest); err != nil {
+			return errors.New(fmt.Sprintf("Memory request failure: %s", err.Error()))
+		}
+		numRuns++
+	}
+
+	if request.NetworkRequest != nil {
+		if err := handler.RunNetworkRequest(request.NetworkRequest); err != nil {
+			return errors.New(fmt.Sprintf("Network request failure: %s", err.Error()))
+		}
+		numRuns++
+	}
+
+	if request.BlkIoRequest != nil {
+		if err := handler.RunBlkIoRequest(request.BlkIoRequest); err != nil {
+			return errors.New(fmt.Sprintf("BlkIO request failure: %s", err.Error()))
+		}
+		numRuns++
+	}
+
+	if numRuns == 0 {
+		return errors.New("Requested resource not recognized or implemented")
+	}
+
+	return nil
 }
 
 type Work struct {
@@ -268,10 +291,9 @@ func main() {
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
-		panic(err)
-	}
-	if err := handler.GetNetworkPeers(); err != nil {
-		panic(err)
+		fmt.Println("[Warning] Cannot get Kube Client; no support for network request!")
+	} else if err := handler.GetNetworkPeers(); err != nil {
+		fmt.Println("[Warning] Cannot get network peers; no support for network request!")
 	}
 
 	r := gin.Default()

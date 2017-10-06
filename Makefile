@@ -25,6 +25,7 @@ run:
 test:
 	dd if=/dev/zero of=testfile bs=100M count=1
 	curl -XPOST -H "Content-Type: application/json" localhost:7998/run -d @resource-requests.json
+	curl -XPOST -H "Content-Type: application/json" localhost:7998/run -d @multi-resource-requests.json
 
 build-linux: init
 	GOOS=linux GOARCH=amd64 $(GO_EXECUTABLE) build .
