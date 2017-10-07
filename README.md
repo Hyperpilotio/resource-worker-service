@@ -11,8 +11,17 @@
 ### Building Docker Image:
 `make docker-build`
 
-## Deploying onto Kubernetes:
-`kubectl apply -f deploy/`
+## Deploying:
+
+### Deploying with GCP:
+- `gcloud container clusters create resource-worker-service`
+- `gcloud container clusters get-credentials resource-worker-service`
+- `kubectl create -f deploy/`
+
+## Deploying onto AWS with deployer
+- Deploy an empty K8S cluster: `./deploy-k8s.sh [username]`
+- Retrieve K8S credentials (or through the UI): `curl localhost:7777/v1/deployments/[DEPLOYMENT_ID]/kubeconfig > ~/.kube/config`
+- `kubectl create -f deploy/`
 
 ### Accessing the Service Through K8S Proxy:
 - `kubectl proxy`
