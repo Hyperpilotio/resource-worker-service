@@ -8,6 +8,10 @@
 ### Building:
 `make build`
 
+### Local testing:
+`make run`
+`make test` (from a separate terminal)
+
 ### Building Docker Image:
 `make docker-build`
 
