@@ -1,41 +1,25 @@
 package main
 
 import (
-	"bytes"
-	"container/ring"
-	"errors"
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/golang/glog"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"math/rand"
-	"net/http"
 	"os"
-	"strconv"
+	"fmt"
 	"time"
+	"flag"
+	"bytes"
+	"errors"
+	"strconv"
+	"net/http"
+	"io/ioutil"
+	"math/rand"
+	"container/ring"
+	"k8s.io/client-go/rest"
+	"github.com/golang/glog"
+	"github.com/gin-gonic/gin"
+	"k8s.io/client-go/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var (
-	duration = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Name: "request_duration_seconds",
-			Help: "Summary of request durations.",
-		},
-		[]string{"label"},
-	)
-	counter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "request_count",
-			Help: "Count of requests",
-		},
-		[]string{"label"},
-	)
-)
 
 type ResourceWork interface {
 	Run() error
@@ -286,10 +270,23 @@ type Work struct {
 	Label    string            `form:"label" json:"label,omitempty"`
 }
 
+
 func main() {
 
-	prometheus.MustRegister(duration)
-	prometheus.MustRegister(counter)
+	envStatsPublishType := os.Getenv("STATS_PUBLISHER")
+	if envStatsPublishType == "" {
+		envStatsPublishType = "prometheus"
+	}
+	statsPublishType := flag.String("stats", envStatsPublishType, "name of the stats collector service")
+	flag.Parse()
+
+	statsPublisher, err := NewStatsPublisher(*statsPublishType)
+	if err != nil {
+		panic(err)
+	}
+
+	statsPublisher.RegisterCounter("request_count", "Count of requests")
+	statsPublisher.RegisterTimer("request_duration", "Summary of request durations")
 
 	handler := &ResourceRequestHandler{}
 	if err := handler.GetKubeClient(); err != nil {
@@ -300,7 +297,9 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	if statsPublisher.To == "prometheus" {
+		r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	}
 
 	r.POST("/network-endpoint", func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
@@ -323,9 +322,8 @@ func main() {
 
 			startTime := time.Now()
 			defer func(begun time.Time) {
-				promLabels := prometheus.Labels{"label": work.Label}
-				duration.With(promLabels).Observe(time.Since(begun).Seconds())
-				counter.With(promLabels).Inc()
+				statsPublisher.Timing("request_duration", work.Label, time.Since(begun))
+				statsPublisher.Inc("request_count", work.Label)
 			}(startTime)
 
 			// Run the worker

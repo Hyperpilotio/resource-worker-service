@@ -1,0 +1,24 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: statsd
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: statsd
+    spec:
+      containers:
+      - name: statsd
+        image: rucka/docker-statsd:v0.8.0
+        ports:
+        - containerPort: 8125
+        volumeMounts:
+        - name: statsd-config
+          mountPath: /etc/statsd/config.js
+          subPath: config.js
+      volumes:
+      - name: statsd-config
+        configMap:
+          name: statsd-config
