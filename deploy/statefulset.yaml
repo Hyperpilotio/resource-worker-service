@@ -42,7 +42,11 @@ spec:
               fieldPath: spec.nodeName
         # Uncomment this section to publish data to statsd instead of prometheus
         # - name: STATS_PUBLISHER
-        #   value: statsd
+        #   value: prometheus
+        # - name: STATSD_HOST
+        #   value: statsd-service.default.svc.cluster.local
+        # - name: STATSD_PORT
+        #   value: "8125"
       volumes:
       - name: procfs
         hostPath:

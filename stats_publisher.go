@@ -6,6 +6,7 @@ import (
 	"time"
 	"errors"
 	"github.com/quipo/statsd"
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,7 +35,17 @@ func NewStatsPublisher(to string) (*StatsPublisher, error) {
 		}
 	case "statsd":
 		prefix := "hyperpilot.resource-worker-service."
-		statsdClient := statsd.NewStatsdClient(nodeName + ":8125", prefix)
+		statsdHost := os.Getenv("STATSD_HOST")
+		if statsdHost == "" {
+			return nil, errors.New("STATSD_HOST environment variable must be defined")
+		}
+		statsdPort := os.Getenv("STATSD_PORT")
+		if statsdPort == "" {
+			glog.Warning("STATSD_PORT environment variable not defined, using default 8125")
+			statsdPort = "8125"
+		}
+		statsdUrl := fmt.Sprintf("%s:%s", statsdHost, statsdPort)
+		statsdClient := statsd.NewStatsdClient(statsdUrl, prefix)
 		if err := statsdClient.CreateSocket(); err != nil {
 			return nil, errors.New("Failed to create statsd client: " + err.Error())
 		}
@@ -67,7 +78,7 @@ func (publisher *StatsPublisher) RegisterTimer(metric string, help string) {
 }
 
 func (publisher *StatsPublisher) makeStatsdMetric(metric string, label string) string {
-	return fmt.Sprintf("%s..node--%s..label--%s", metric, publisher.NodeName, label)
+	return fmt.Sprintf("%s.%s.%s", metric, publisher.NodeName, label)
 }
 
 func (publisher *StatsPublisher) Inc(metric string, label string) error {
