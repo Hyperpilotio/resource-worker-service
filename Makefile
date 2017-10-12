@@ -17,7 +17,7 @@ init: glide-check
 	glide install
 
 build: init
-	$(GO_EXECUTABLE) build .
+	CGO_ENABLED=0 go build -a -installsuffix cgo
 
 run:
 	./resource-worker-service -logtostderr=true -v=2
