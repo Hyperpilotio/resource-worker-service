@@ -5,6 +5,10 @@ metadata:
 data:
   config.js: |-
     {
-      backends: ["./backends/console"],
-      flushInterval: 5000
+      backends: ["./backends/console", "./backends/repeater"],
+      flushInterval: 5000,
+      repeater: [{
+            "host": "relay.default",
+            "port": 6126
+      }]
     }

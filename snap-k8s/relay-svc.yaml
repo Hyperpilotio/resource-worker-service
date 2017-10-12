@@ -1,0 +1,40 @@
+--- 
+apiVersion: v1
+kind: Service
+metadata: 
+  name: relay
+spec: 
+  ports: 
+    - 
+      port: 5801
+      protocol: TCP
+      name: relay-port
+      targetPort: 5801
+    - 
+      port: 6123
+      protocol: TCP
+      name: graphite-tcp
+      targetPort: 6123
+    - 
+      port: 6124
+      protocol: UDP
+      name: graphite-udp
+      targetPort: 6124
+    - 
+      port: 6125
+      protocol: TCP
+      name: statsd-tcp
+      targetPort: 6125
+    - 
+      port: 6126
+      protocol: UDP
+      name: statsd-udp
+      targetPort: 6126
+    - 
+      port: 8182
+      name: snap-port
+      protocol: TCP
+      targetPort: 8182
+  selector:
+      app: relay
+
