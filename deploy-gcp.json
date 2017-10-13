@@ -77,7 +77,9 @@
                                         "image": "hyperpilot/resource-worker-service",
                                         "ports": [
                                             {
-                                                "containerPort": 7998
+                                                "containerPort": 7998,
+                                                "hostPort": 7998,
+                                                "protocol": "TCP"
                                             }
                                         ],
                                         "volumeMounts": [
