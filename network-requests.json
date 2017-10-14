@@ -1,0 +1,34 @@
+{
+    "requests": [
+        {"network": {
+            "size": 1000,
+	    "rounds": 10
+	    }
+        },
+        {"network": {
+            "size": 1000,
+	    "rounds": 25
+	    }
+	},
+        {"network": {
+            "size": 1000,
+	    "rounds": 50
+	    }
+	},
+        {"network": {
+            "size": 1000,
+	    "rounds": 75
+	    }
+	},
+        {"network": {
+            "size": 1000,
+	    "rounds": 100
+	    }
+	},
+        {"network": {
+            "size": 2000,
+	    "rounds": 10
+	    }
+	}
+    ]
+}

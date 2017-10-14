@@ -11,14 +11,14 @@
 		"rounds": 10
 	    },
 	    "blkio": {
-		"writeSize": 1048576,
+		"writeSize": 1024,
 		"rounds": 10
 	    }
 	},
 	{
 	    "blkio": {
-		"readSize": 1048576,
-		"rounds": 5
+		"readSize": 512,
+		"rounds": 20
 	    }
 	},
 	{

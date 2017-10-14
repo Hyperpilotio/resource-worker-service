@@ -6,7 +6,7 @@ IMAGE=resource-worker-service
 TAG=latest
 
 glide-check:
-	@if [ -z $GLIDE ]; then \
+	@if [ -z $(GLIDE) ]; then \
 		echo "glide doesn't exist."; \
 		curl https://glide.sh/get | sh; \
 	else \
@@ -28,7 +28,10 @@ test:
 	curl -XPOST -H "Content-Type: application/json" localhost:7998/run -d @multi-resource-requests.json
 
 build-linux: init
-	GOOS=linux GOARCH=amd64 $(GO_EXECUTABLE) build .
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -installsuffix cgo
 
-docker-build: build-linux
-	docker build -t $(ORGANIZATION)/$(IMAGE):$(TAG) .
+docker-build:
+	docker build --no-cache -t $(ORGANIZATION)/$(IMAGE):$(TAG) .
+
+docker-push:
+	docker push ${ORGANIZATION}/${IMAGE}:${TAG}

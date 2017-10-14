@@ -1,25 +1,24 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"time"
-	"flag"
 	"bytes"
-	"errors"
-	"strconv"
-	"net/http"
-	"io/ioutil"
-	"math/rand"
 	"container/ring"
-	"k8s.io/client-go/rest"
-	"github.com/golang/glog"
+	"errors"
+	"flag"
+	"fmt"
 	"github.com/gin-gonic/gin"
-	"k8s.io/client-go/kubernetes"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"io/ioutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"math/rand"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
-
 
 type ResourceWork interface {
 	Run() error
@@ -37,13 +36,13 @@ type MemRequest struct {
 }
 
 type NetworkRequest struct {
-	Bandwidth int  `form:"bandwidth" json:"bandwidth"` // in mbps
-	Rounds    *int `form:"rounds" json:"rounds,omitempty"`
+	Size   int  `form:"size" json:"size"` // in KB
+	Rounds *int `form:"rounds" json:"rounds,omitempty"`
 }
 
 type BlkIoRequest struct {
-	ReadSize  int  `form:"readSize" json:"readSize,omitempty"`   // in bytes
-	WriteSize int  `form:"writeSize" json:"writeSize,omitempty"` // in bytes
+	ReadSize  int  `form:"readSize" json:"readSize,omitempty"`   // in KB
+	WriteSize int  `form:"writeSize" json:"writeSize,omitempty"` // in KB
 	Rounds    *int `form:"rounds" json:"rounds,omitempty"`
 }
 
@@ -99,14 +98,9 @@ func (handler *ResourceRequestHandler) GetNetworkPeers() error {
 	handler.NetworkPeers = ring.New(len(pods.Items) - 1)
 
 	for _, pod := range pods.Items {
-		podName := pod.GetName()
-		if podName != currentPod {
-			handler.NetworkPeers.Value = fmt.Sprintf(
-				"%s.%s.%s.svc.cluster.local",
-				podName,
-				pod.Spec.Subdomain,
-				pod.Namespace,
-			)
+		if pod.Name != currentPod {
+			handler.NetworkPeers.Value = pod.Status.PodIP
+			fmt.Printf("Peer pod name: %s, IP address: %s\n", pod.Name, pod.Status.PodIP)
 			handler.NetworkPeers = handler.NetworkPeers.Next()
 		}
 	}
@@ -124,6 +118,10 @@ func (handler *ResourceRequestHandler) RunCPURequest(request *CPURequest) error 
 		request.Noise = &defaultNoise
 	}
 
+	if request.Cycles < 0 {
+		return errors.New("Number of cycles in a cpu request cannot be negative!")
+	}
+
 	ratio := 1.0 + (rand.Float32()-0.5)*2.0*float32(*request.Noise)/100.0
 	for r := 0; r < *request.Rounds; r++ {
 		for i := 0; i < int(float32(request.Cycles)*ratio); i++ {
@@ -137,6 +135,10 @@ func (handler *ResourceRequestHandler) RunMemRequest(request *MemRequest) error 
 	if request.Rounds == nil {
 		defaultRounds := 1
 		request.Rounds = &defaultRounds
+	}
+
+	if request.Size <= 0 {
+		return errors.New("Size of a memory request must be positive!")
 	}
 
 	arraySize := request.Size * 1024 * 1024 / 8
@@ -164,7 +166,8 @@ func (handler *ResourceRequestHandler) RunNetworkRequest(request *NetworkRequest
 	url := fmt.Sprintf("http://%s:7998/network-endpoint", handler.NetworkPeers.Value)
 	handler.NetworkPeers = handler.NetworkPeers.Next()
 
-	content := make([]byte, request.Bandwidth)
+	content := make([]byte, request.Size*1000)
+	fmt.Printf("[Info] Send %d KB of network traffic to peer %s for %d times\n", request.Size, url, *request.Rounds)
 	for r := 0; r < *request.Rounds; r++ {
 		resp, err := http.Post(url, "text/plain", bytes.NewReader(content))
 
@@ -184,7 +187,7 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 	}
 
 	if request.ReadSize != 0 {
-		readerArray := make([]byte, request.ReadSize)
+		readerArray := make([]byte, request.ReadSize*1024)
 		file, err := os.Open("testfile")
 		if err != nil {
 			return errors.New(fmt.Sprintf("Failed to open file: %s", err.Error()))
@@ -194,8 +197,9 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 			return errors.New(fmt.Sprintf("Failed to get file stat: %s", err.Error()))
 		}
 
-		for i := 0; i < *request.Rounds; i ++ {
-			readAt := rand.Int63n(fileStat.Size() - int64(request.ReadSize))
+		fmt.Printf("[Info] Read %d KB of data from a file for %d times\n", request.ReadSize, *request.Rounds)
+		for r := 0; r < *request.Rounds; r++ {
+			readAt := rand.Int63n(fileStat.Size() - int64(request.ReadSize*1024))
 			if _, err := file.ReadAt(readerArray, readAt); err != nil {
 				return errors.New(fmt.Sprintf("Failed to read file: %s", err.Error()))
 			}
@@ -207,6 +211,7 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 	}
 
 	if request.WriteSize != 0 {
+		fmt.Printf("[Info] Write %d KB of data to a temp file for %d times\n", request.WriteSize, *request.Rounds)
 		for i := 0; i < *request.Rounds; i++ {
 			tmpfile, err := ioutil.TempFile("", "rws")
 			if err != nil {
@@ -214,7 +219,7 @@ func (handler *ResourceRequestHandler) RunBlkIoRequest(request *BlkIoRequest) er
 			}
 			defer os.Remove(tmpfile.Name())
 
-			content := make([]byte, request.WriteSize)
+			content := make([]byte, request.WriteSize*1024)
 			if _, err := tmpfile.Write(content); err != nil {
 				return errors.New(fmt.Sprintf("Failed to write into file: %s", err.Error()))
 			}
@@ -269,7 +274,6 @@ type Work struct {
 	Requests []ResourceRequest `form:"requests" json:"requests"`
 	Label    string            `form:"label" json:"label,omitempty"`
 }
-
 
 func main() {
 

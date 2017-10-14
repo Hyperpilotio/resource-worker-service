@@ -1,7 +1,7 @@
 {
     "requests": [
         {"cpu": {
-	    "cycles": 200,
+	    "cycles": 2000,
             "rounds": 10
 	    }
         },
@@ -10,12 +10,12 @@
 	    }
 	},
 	{"blkio": {
-	    "readSize": 1048576,
-	    "rounds": 10
+	    "readSize": 1024,
+	    "rounds": 20
 	    }
 	},
         {"cpu": {
-	    "cycles": 400,
+	    "cycles": 4000,
 	    "noise": 5
 	    }
         },
@@ -25,12 +25,12 @@
 	    }
 	},
 	{"blkio": {
-	    "writeSize": 1048576,
+	    "writeSize": 1024,
 	    "rounds": 10
 	    }
 	},
         {"cpu": {
-	    "cycles": 600
+	    "cycles": 6000
 	    }
         },
 	{"mem": {
@@ -39,7 +39,7 @@
 	    }
 	},
         {"cpu": {
-	    "cycles": 800,
+	    "cycles": 8000,
 	    "noise": 5,
 	    "rounds": 10
 	    }
@@ -52,7 +52,7 @@
         {"cpu": {
 	    "cycles": 1000,
 	    "noise": 5,
-	    "rounds": 10
+	    "rounds": 100
 	    }
         },
 	{"mem": {
