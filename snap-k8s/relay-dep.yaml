@@ -16,45 +16,44 @@ spec:
     spec:
       hostname: relay
       containers:
-      - imagePullPolicy: Always
-        image: hyperpilot/snap-relay
-        name: relay
-        ports:
-        - containerPort: 5801
-          name: relay-port
-          protocol: TCP
-        - containerPort: 6123
-          name: graphite-tcp
-          protocol: TCP
-        - containerPort: 6124
-          name: graphite-udp
-          protocol: UDP
-        - containerPort: 6125
-          name: statsd-tcp
-          protocol: TCP
-        - containerPort: 6126
-          name: statsd-udp
-          protocol: UDP
-        - containerPort: 8182
-          name: snap-port
-          protocol: TCP
-        args:
-        - "--addr"
-        - "0.0.0.0"
-        - "--statsd-tcp-port"
-        - "6125"
-        - "--statsd-udp-port"
-        - "6126"
-        - "--graphite-tcp-port"
-        - "6123"
-        - "--graphite-udp-port"
-        - "6124"
-        - "--log-level"
-        - "5"
-
-        resources:
-          requests:
-            cpu: 300.0m
-            memory: 300Mi
-        volumeMounts: []
+        - imagePullPolicy: Always
+          image: hyperpilot/snap-relay
+          name: relay
+          ports:
+            - containerPort: 5801
+              name: relay-port
+              protocol: TCP
+            - containerPort: 6123
+              name: graphite-tcp
+              protocol: TCP
+            - containerPort: 6124
+              name: graphite-udp
+              protocol: UDP
+            - containerPort: 6125
+              name: statsd-tcp
+              protocol: TCP
+            - containerPort: 6126
+              name: statsd-udp
+              protocol: UDP
+            - containerPort: 8182
+              name: snap-port
+              protocol: TCP
+          args:
+            - '--addr'
+            - 0.0.0.0
+            - '--statsd-tcp-port'
+            - '6125'
+            - '--statsd-udp-port'
+            - '6126'
+            - '--graphite-tcp-port'
+            - '6123'
+            - '--graphite-udp-port'
+            - '6124'
+            - '--log-level'
+            - '5'
+          resources:
+            requests:
+              cpu: 300.0m
+              memory: 300Mi
+          volumeMounts: []
       volumes: []

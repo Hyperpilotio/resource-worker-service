@@ -10,10 +10,10 @@ spec:
         app: statsd
     spec:
       containers:
-      - name: statsd
-        image: hyperpilot/statsd:latest
-        ports:
-        - containerPort: 8125
-        - containerPort: 8126
-        volumeMounts: []
+        - name: statsd
+          image: 'hyperpilot/statsd:latest'
+          ports:
+            - containerPort: 8125
+            - containerPort: 8126
+          volumeMounts: []
       volumes: []
