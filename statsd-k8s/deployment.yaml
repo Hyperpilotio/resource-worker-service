@@ -10,15 +10,10 @@ spec:
         app: statsd
     spec:
       containers:
-      - name: statsd
-        image: rucka/docker-statsd:v0.8.0
-        ports:
-        - containerPort: 8125
-        volumeMounts:
-        - name: statsd-config
-          mountPath: /etc/statsd/config.js
-          subPath: config.js
-      volumes:
-      - name: statsd-config
-        configMap:
-          name: statsd-config
+        - name: statsd
+          image: 'hyperpilot/statsd:latest'
+          ports:
+            - containerPort: 8125
+            - containerPort: 8126
+          volumeMounts: []
+      volumes: []
