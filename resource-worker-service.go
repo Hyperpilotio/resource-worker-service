@@ -303,6 +303,10 @@ func main() {
 
 	if statsPublisher.To == "prometheus" {
 		r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+		// NOTE: We need to publish some stats to have theese counters at least be available with /metrics.
+		statsPublisher.Timing("request_duration", "", 0*time.Millisecond)
+		statsPublisher.Inc("request_count", "")
 	}
 
 	r.POST("/network-endpoint", func(c *gin.Context) {
