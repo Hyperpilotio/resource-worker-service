@@ -5,6 +5,8 @@ ORGANIZATION=hyperpilot
 IMAGE=resource-worker-service
 TAG=latest
 
+KUBE_CONFIG=~/.kube/config
+
 glide-check:
 	@if [ -z $(GLIDE) ]; then \
 		echo "glide doesn't exist."; \
@@ -35,3 +37,13 @@ docker-build:
 
 docker-push:
 	docker push ${ORGANIZATION}/${IMAGE}:${TAG}
+
+deploy-k8sconntrack:
+	@echo "Check whether or not the configuration file of kubernetes exists ..."
+	@if [ -z ${KUBE_CONFIG} ]; then \
+		echo "${KUBE_CONFIG} doesn't exist."; \
+	else \
+		kubectl create secret generic vmt-config --from-file ${KUBE_CONFIG} ; \
+		kubectl create -f ./k8sconntrack ; \
+	fi
+
