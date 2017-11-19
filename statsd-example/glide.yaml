@@ -1,0 +1,4 @@
+package: github.com/hyperpilotio/resource-worker-service/statsd-example
+import:
+- package: gopkg.in/alexcesaro/statsd.v2
+  version: ^2.0.0
