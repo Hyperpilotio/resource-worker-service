@@ -1,0 +1,6 @@
+hash: a0c04e99c53a79e6ce6b9f59cbb6d62ad7efee3ebf96a6e34a30ad76b83a696c
+updated: 2017-11-19T13:39:09.660541+08:00
+imports:
+- name: gopkg.in/alexcesaro/statsd.v2
+  version: 7fea3f0d2fab1ad973e641e51dba45443a311a90
+testImports: []
